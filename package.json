@@ -1,0 +1,19 @@
+{
+  "name": "backburner",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+
+  "workspaces": [
+    "services/*",
+    "links/*"
+  ],
+  
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

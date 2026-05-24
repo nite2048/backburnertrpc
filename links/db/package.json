@@ -1,0 +1,17 @@
+{
+  "name": "@links/db",
+  "type": "module",
+  
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev"
+  },
+  
+  "dependencies": {
+    "@prisma/client": "^6"
+  },
+  
+  "devDependencies": {
+    "prisma": "^6"
+  }
+}
