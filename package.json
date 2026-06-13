@@ -1,19 +1,20 @@
 {
-  "name": "backburner",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-
-  "workspaces": [
-    "services/*",
-    "links/*"
-  ],
-  
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  
-  "peerDependencies": {
-    "typescript": "^5"
-  }
+     "name": "backburner",
+     "module": "index.ts",
+     "type": "module",
+     "private": true,
+     "scripts": {
+          "server": "bun --hot services/backend",
+          "client": "bun --hot --cwd services/frontend dev"
+     },
+     "workspaces": [
+          "services/*",
+          "links/*"
+     ],
+     "devDependencies": {
+          "@types/bun": "^1.3.14"
+     },
+     "peerDependencies": {
+          "typescript": "^6.0.3"
+     }
 }

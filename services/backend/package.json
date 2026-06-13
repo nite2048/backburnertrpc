@@ -1,17 +1,12 @@
 {
   "name": "@services/backend",
   "type": "module",
-  
-  "scripts": {
-    "dev": "bun --watch index.ts",
-    "start": "bun index.ts"
-  },
-  
+
   "dependencies": {
-    "@trpc/server": "^11",
-    "zod": "^3",
-    
-    "@links/contracts": "*",
-    "@links/db": "*"
+     "@google/genai": "^2.6.0",
+     "@links/contracts": "*",
+     "@links/db": "*",
+     "@openrouter/sdk": "^0.12.79",
+     "@trpc/server": "^11.17.0"
   }
 }
