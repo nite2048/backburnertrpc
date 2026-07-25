@@ -1,12 +1,15 @@
 {
-  "name": "@services/backend",
-  "type": "module",
+     "name": "@services/backend",
+     "type": "module",
 
-  "dependencies": {
-     "@google/genai": "^2.6.0",
-     "@links/contracts": "*",
-     "@links/db": "*",
-     "@openrouter/sdk": "^0.12.79",
-     "@trpc/server": "^11.17.0"
-  }
+     "dependencies": {
+          "@google/genai": "^2.6.0",
+
+          "@links/contracts": "workspace:*",
+          "@links/db": "workspace:*",
+
+          "@openrouter/sdk": "^0.12.79",
+          "@trpc/server": "^11.17.0",
+          "zod": "^4.4.3"
+     }
 }

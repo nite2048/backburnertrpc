@@ -6,3 +6,4 @@ dist
 .cache
 *.tsbuildinfo
 .idea
+stuff

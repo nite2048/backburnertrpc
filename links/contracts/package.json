@@ -1,8 +1,16 @@
 {
-  "name": "@links/contracts",
-  "type": "module",
-
-  "dependencies": {
-    "zod": "^3"
-  }
+     "name": "@links/contracts",
+     "type": "module",
+     
+     "exports": {
+          ".": "./index.ts"
+     },
+     
+     "peerDependencies": {
+          "zod": "^4.4.3"
+     },
+     
+     "devDependencies": {
+          "zod": "^4.4.3"
+     }
 }
