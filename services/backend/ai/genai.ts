@@ -1,19 +1,28 @@
-import { ok, err, tryCatch, type Result, InternalError } from "../utils/errors";
-import * as fs from 'node:fs/promises';
+import { InternalError, tryCatch, ok, err} from "../utils/errors";
 import { OpenRouter } from '@openrouter/sdk';
-import * as schemas from '@links/contracts'; //FIXME: import {schemas} from '@links/contracts';
 
+//FIXME: import {schemas} from '@links/contracts';
+import * as fs from 'node:fs/promises';
+import * as schemas from '@links/contracts'; 
 import * as zod from 'zod';
+
 
 const openRouter = new OpenRouter({
 	apiKey: process.env.OPENROUTER_API_KEY,
 });
 
+//IMPORTANT: countryOfOrigin for both API is in ISO 3166-1 alpha-2 format
+//TODO update system instructions to be more deliberate and concise and try to include stuff like these
 const INCLUDE_ADULT = true;
 
 type aiInferredMetadata = zod.infer<typeof schemas.metadataSchema>;
-type Metadata = aiInferredMetadata & { image: string };
+type Metadata = aiInferredMetadata & { image: string }; 
 type AppEntry = zod.infer<typeof schemas.appEntrySchema>;
+
+/* const output: Metadata = {
+  ...parsed.data,
+  image: imageInBase64,
+}; */
 
 export async function acquireMetadata(model: string, imageInBase64: string) {
      const instructions = await tryCatch(fs.readFile("./services/backend/ai/instructions/metadata.txt", "utf8"));
@@ -125,7 +134,7 @@ export async function themoviedb(metadata: aiInferredMetadata) {
 
 	// Maps the validated TMDB response into a single media model with consistent field names regardless of whether the result is a movie or TV show.
 	const tmdbEntrySchemaNormalized = filtered.map((media) =>
-		appEntrySchema.parse({
+		schemas.appEntrySchema.parse({
 			id: media.id,
 			mediaType: media.media_type,
 			title: media.title ?? media.name ?? "",
@@ -193,7 +202,7 @@ export async function anilist(name : string) {
      if (!result.ok) return err(result.error);
 
      const json = await result.data.json();
-     const parsed = anilistResponseSchema.safeParse(json);
+     const parsed = schemas.anilistResponseSchema.safeParse(json);
 
      if (!parsed.success) return err(new InternalError(parsed.error.message)); //FIXME: Add a new error type API error and subsequently each specific api error
 
@@ -207,12 +216,12 @@ export async function anilist(name : string) {
 //FIXME Return type check and errors
 export async function queryData(metadata: aiInferredMetadata) {
      switch (metadata.contentType) {
-          case ContentType.Video:
+          case schemas.ContentType.Video:
                const result = await themoviedb(metadata)
                if (!result.ok) return err(result.error);
 
                return ok(result.data);
-          case ContentType.Image:
+          case schemas.ContentType.Image:
                const imageResult = await anilist(metadata.name)
                if (!imageResult.ok) return err(imageResult.error);
 
@@ -221,11 +230,3 @@ export async function queryData(metadata: aiInferredMetadata) {
                return err(new InternalError(`Unsupported content type: ${metadata.contentType}`));
      }
 }
-//countryOfOrigin for both API is in ISO 3166-1 alpha-2 format
-
-//TODO update system instructions to be more deliberate and concise and try to include stuff like these
-
-// const output: Metadata = {
-//   ...parsed.data,
-//   image: imageInBase64,
-// };
