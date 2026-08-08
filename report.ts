@@ -6,8 +6,6 @@
 // was never written against. @ts-nocheck keeps it out of that entirely.
 // (Cleaner long-term: add this file's path to your tsconfig "exclude".)
 
-//FIXME code formatting errors
-
 /**
  * code-report.ts
  *
@@ -42,6 +40,7 @@
 
 import { Glob } from "bun";
 import { readFileSync } from "node:fs";
+import { relative } from "node:path";
 
 interface TagFinding {
   tag: string;
@@ -145,8 +144,11 @@ function buildTagRegex(tags: string[]): RegExp {
 // URLs and JSDoc annotations are common noise sources — filter these out
 // before scoring at all, since they're neither code nor "commented out".
 const LINK_SIGNALS: RegExp[] = [
-  /^@?(https?:\/\/|www\.)/i, // scheme-based URL, optionally @-prefixed
-  /^[a-z0-9-]+(\.[a-z0-9-]+)+(\/|\?|$)/i, // bare domain + path, e.g. api.themoviedb.org/3/search
+  /https?:\/\//i, // any URL scheme, anywhere in the line (not just at the start)
+  /^www\./i, // bare www. prefix
+  /^[a-z0-9-]+(\.[a-z0-9-]+)+(\/|\?|$)/i, // bare domain + path at line start, e.g. api.themoviedb.org/3/search
+  /\b[a-z0-9-]+\.[a-z0-9-]+\.[a-z]{2,6}\b(?!\()/i, // subdomain.domain.tld anywhere, but not a method chain like a.b.trim()
+  /\b(localhost|(?:\d{1,3}\.){3}\d{1,3}|[a-z0-9-]+\.[a-z]{2,6}):\d{2,5}\b/i, // host:port, e.g. localhost:3000
 ];
 
 const JSDOC_SIGNAL =
@@ -183,8 +185,18 @@ function looksLikeCode(text: string): boolean {
 
 // ---------- markdown helpers ----------
 
+// Strips ANY newline-like character (\n, \r, and the less common Unicode
+// line/paragraph separators U+2028/U+2029), not just \n. Applied at
+// capture-time, before text ever gets stored in a finding, as the first
+// line of defense against a stray character breaking a table row.
+function sanitizeSingleLine(text: string): string {
+  return text.replace(/[\r\n\u2028\u2029]+/g, " ").trim();
+}
+
 function escapeCell(text: string): string {
-  return text.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  // Second line of defense at render-time, in case anything upstream ever
+  // changes and stops pre-sanitizing.
+  return text.replace(/\|/g, "\\|").replace(/[\r\n\u2028\u2029]+/g, " ");
 }
 
 function table(rows: { file: string; line: number; text: string }[], desc: string): string {
@@ -214,9 +226,18 @@ async function main() {
     }
   }
 
+  // Exclude this script's own file from the scan. It lives at the project
+  // root and matches the default root-file include pattern, so without
+  // this it ends up scanning its own comments (e.g. this exact comment
+  // about URL detection was, ironically, getting flagged as a URL).
+  // Resolved dynamically via Bun's entrypoint path rather than a hardcoded
+  // filename, so it keeps working no matter what you rename this file to.
+  const selfFile = toPosix(relative(process.cwd(), Bun.main));
+
   const ignoreGlobs = ignore.map((p) => new Glob(p));
   const scannedFiles = [...files]
     .filter((f) => !ignoreGlobs.some((g) => g.match(f)))
+    .filter((f) => f !== selfFile)
     .sort();
 
   const byTag = new Map<string, TagFinding[]>();
@@ -226,7 +247,7 @@ async function main() {
   for (const file of scannedFiles) {
     let content: string;
     try {
-      content = readFileSync(file, "utf8");
+      content = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
     } catch {
       continue;
     }
@@ -235,12 +256,16 @@ async function main() {
       const tagMatch = tagRegex.exec(text.split("\n")[0]);
       if (tagMatch) {
         const tagName = tagMatch[1].toUpperCase();
-        const rest = (tagMatch[2] || "").trim();
+        const rest = sanitizeSingleLine(tagMatch[2] || "");
         byTag.get(tagName)!.push({ tag: tagName, file, line, text: rest || "(no description)" });
         continue;
       }
       if (looksLikeCode(text)) {
-        codeFindings.push({ file, line, text: text.split("\n")[0].slice(0, 120) });
+        codeFindings.push({
+          file,
+          line,
+          text: sanitizeSingleLine(text.split("\n")[0].slice(0, 120)),
+        });
       }
     }
   }
