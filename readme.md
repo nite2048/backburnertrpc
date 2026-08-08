@@ -40,11 +40,11 @@ cd backburnertrpc
 ```bash 
 bun install
 ```
-create a `.env` in root
+create a `.env` in the root folder
 ```env
-     PORT=3000
-     OPENROUTER_API_KEY='yourkeyhere'
-     TMDB_API_KEY='yourkeyhere'
+PORT=3000
+OPENROUTER_API_KEY='yourkeyhere'
+TMDB_API_KEY='yourkeyhere'
 ```
 ```bash 
 bun run server
@@ -58,6 +58,9 @@ bun run client
 bun run todos
 ```
 
+## previews 💄
+you really do not wanna see my frontend skills.
+
 ## project structure 
 just ask claude (ㆆ_ㆆ)
 
@@ -68,7 +71,7 @@ autocomplete and some placeholder code
 contributions are welcome! feel free to open an issue or submit a pull request (˶>⩊<˶)
 - [changelog](assets/roadmap.md)
 - [roadmap](assets/roadmap.md)
-- [todos and fixme](TODO.md) (pop up, say hi and fix a few bugs) 
+- [todos and fixme](assets/todo.md) (pop up, say hi and fix a few bugs) 
 
 
 ## license
