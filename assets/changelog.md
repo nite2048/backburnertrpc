@@ -1,2 +1,4 @@
-- added readme and other [meta files](assets/)
-- fixed [report.ts](report.ts)
+- minor tweaks
+- fixed some bugs and updated report.ts with some new features
+- intialized drizzle and removed prisma
+- tweaked some packages and little bit of project structure too
