@@ -1,23 +1,21 @@
-import { InternalError, tryCatch, ok, err} from "../utils/errors";
-import { OpenRouter } from '@openrouter/sdk';
+import { InternalError, NotFoundError, ModelError, tryCatch, ok, err, APIError } from "../utils/errors.ts";
+import { ContentType, metadataSchema, appEntrySchema, tmdbResponseSchema, anilistResponseSchema } from '@links/contracts'; 
 
-//FIXME: import {schemas} from '@links/contracts';
 import * as fs from 'node:fs/promises';
-import * as schemas from '@links/contracts'; 
 import * as zod from 'zod';
 
+import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
 	apiKey: process.env.OPENROUTER_API_KEY,
 });
 
 //IMPORTANT: countryOfOrigin for both API is in ISO 3166-1 alpha-2 format
-//TODO update system instructions to be more deliberate and concise and try to include stuff like these
 const INCLUDE_ADULT = true;
 
-type aiInferredMetadata = zod.infer<typeof schemas.metadataSchema>;
+type aiInferredMetadata = zod.infer<typeof metadataSchema>;
 type Metadata = aiInferredMetadata & { image: string }; 
-type AppEntry = zod.infer<typeof schemas.appEntrySchema>;
+type AppEntry = zod.infer<typeof appEntrySchema>;
 
 /* const output: Metadata = {
   ...parsed.data,
@@ -35,7 +33,7 @@ export async function acquireMetadata(model: string, imageInBase64: string) {
      		image: { type: "string" },
      		contentType: {
      			type: "string",
-     			enum: Object.values(schemas.ContentType)
+     			enum: Object.values(ContentType)
      		},
      		metaData: { type: "object" }
      	},
@@ -43,7 +41,7 @@ export async function acquireMetadata(model: string, imageInBase64: string) {
      	additionalProperties: true
      } as const;
 
-     //TODO: Explore using openrouter fusion to improve data responses
+     //FEAT: Explore using openrouter fusion to improve data responses
      const result = await tryCatch(
           openRouter.chat.send({
      		chatRequest: {
@@ -79,23 +77,22 @@ export async function acquireMetadata(model: string, imageInBase64: string) {
      )
 	if (!result.ok) return err(result.error);
 
-	//TODO: Change errors with "model ...." to a new type model error.
      const content : string = result.data.choices[0]?.message.content;
-     if (!content) return err(new InternalError("Model returned an empty response"));
+     if (!content) return err(new ModelError("Model returned an empty response"));
 
      let json
      try {
           json = JSON.parse(content);
      } catch {
           console.log(content)
-          return err(new InternalError("Model returned invalid JSON"));
+          return err(new ModelError("Model returned invalid JSON"));
      }
 
-     //TODO Add safe Parse everywhere and also jsonrepairs
-     const parsed = schemas.metadataSchema.safeParse(json);
+     //TODO: Add safe Parse everywhere 
+     //FEAT: Check the package jsonrepair
+     const parsed = metadataSchema.safeParse(json);
 
-     //FIXME: check zod error types and dont return a arbitrary error here, i.e. return err(new InternalError(parsed.error.message)
-     if (!parsed.success) return err(new InternalError("Zod validation failed, Model returned invalid schema"));
+     if (!parsed.success) return err(new ModelError("Validation failed, Model returned invalid schema"));
      return ok(parsed.data);
 }
 
@@ -105,7 +102,6 @@ export async function themoviedb(metadata: aiInferredMetadata) {
 	//TODO: Look into these below later (doesn't work with multi)
 	//https://developer.themoviedb.org/docs/append-to-response
 	//https://developer.themoviedb.org/reference/movie-alternative-titles
-
      const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(metadata.name)}&include_adult=${INCLUDE_ADULT}&language=en-US&page=1`;
 
 	const options = {
@@ -121,20 +117,20 @@ export async function themoviedb(metadata: aiInferredMetadata) {
 
      const json = await result.data.json();
 
-     const parsed = schemas.tmdbResponseSchema.safeParse(json);
-     if (!parsed.success) return err(new InternalError(parsed.error.message)); //FIXME: Add a new error type API error and subsequently each specific api error
+     const parsed = tmdbResponseSchema.safeParse(json);
+     if (!parsed.success) return err(new APIError(parsed.error.message)); 
 
 	const filtered = parsed.data.results.filter(
 		(r) => r.media_type === "movie" || r.media_type === "tv"
      );
 
 	if (filtered.length === 0) {
-		return err(new InternalError(`No movie/tv results found for "${metadata.name}"`)); //FIXME: Add a new error type null error, or unspported error
+		return err(new NotFoundError(`No movie/tv results found for "${metadata.name}"`));
      }
 
 	// Maps the validated TMDB response into a single media model with consistent field names regardless of whether the result is a movie or TV show.
 	const tmdbEntrySchemaNormalized = filtered.map((media) =>
-		schemas.appEntrySchema.parse({
+		appEntrySchema.parse({
 			id: media.id,
 			mediaType: media.media_type,
 			title: media.title ?? media.name ?? "",
@@ -153,7 +149,7 @@ export async function themoviedb(metadata: aiInferredMetadata) {
 	return ok(tmdbEntrySchemaNormalized);
 }
 
-//FIXME - Anilist language should default to japanese | Korean | Chinese / Infer language by country of origin
+//FIXME: Anilist language should default to japanese | Korean | Chinese / Infer language by country of origin
 export async function anilist(name : string) {
      //https://studio.apollographql.com/sandbox/explorer @https://graphql.anilist.co > Query > Page > Media
      //TODO Add [countryOfOrigin] and update relevent schemas
@@ -202,26 +198,26 @@ export async function anilist(name : string) {
      if (!result.ok) return err(result.error);
 
      const json = await result.data.json();
-     const parsed = schemas.anilistResponseSchema.safeParse(json);
+     const parsed = anilistResponseSchema.safeParse(json);
 
-     if (!parsed.success) return err(new InternalError(parsed.error.message)); //FIXME: Add a new error type API error and subsequently each specific api error
+     if (!parsed.success) return err(new APIError(parsed.error.message));
 
      if(parsed.data.data.Page.media.length === 0){
-          return err(new InternalError(`No results found for ${name}`)); //FIXME: Add a new error type null error, or unspported error
+          return err(new NotFoundError(`No results found for ${name}`));
      }
 
      return ok(parsed.data.data.Page.media);
 }
 
-//FIXME Return type check and errors
+//TODO: Recheck return types
 export async function queryData(metadata: aiInferredMetadata) {
      switch (metadata.contentType) {
-          case schemas.ContentType.Video:
+          case ContentType.Video:
                const result = await themoviedb(metadata)
                if (!result.ok) return err(result.error);
 
                return ok(result.data);
-          case schemas.ContentType.Image:
+          case ContentType.Image:
                const imageResult = await anilist(metadata.name)
                if (!imageResult.ok) return err(imageResult.error);
 

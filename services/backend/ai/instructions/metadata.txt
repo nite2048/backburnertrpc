@@ -53,7 +53,8 @@ extract it from that context. Return null only if no title can be determined at 
 ### contentType
 Exactly one of:
 
-- **Video** → movies, TV shows, anime, YouTube videos, documentaries, short films, livestreams, reels
+- **Video** → movies, TV shows, anime, documentaries, short films, 
+- **Web** → YouTube videos, web pages, livestreams, reels, articles, pintrest, art
 - **Audio** → songs, albums, podcasts, audiobooks, music tracks, radio content
 - **Text** → books, articles, manga, comics, newsletters, essays, academic papers
 - **Fact** → informational cards, trivia, statistics, quotes, knowledge panels
@@ -71,7 +72,7 @@ Think of it as everything you might find on an information page for this content
 - **Recognition** — award wins, award nominations, critical acclaim, accolades
 - **Extra context** — general sentiment from visible reviews or comments, content warnings, age rating, sequel or prequel relationships, based on a true story, reboot or remake status
 
-_These are starting points_. If you see or can confidently infer something useful that isn't listed here, include it. Omit any field where no evidence exists. **Richer metadata is always preferred over sparse metadata**.
+_These are starting points not the description but the portfolio (Not ~~Who made it:~~ but e.g. director:)_. If you see or can confidently infer something useful that isn't listed here, include it. Omit any field where no evidence exists. **Richer metadata is always preferred over sparse metadata**.
 
 ---
 
@@ -82,3 +83,4 @@ _These are starting points_. If you see or can confidently infer something usefu
 - When multiple interpretations are plausible, pick the most likely one and note the ambiguity in metadata.
 - If the image is indirect — a post, comment, or discussion about the content — mine it aggressively for metadata signals: scores mentioned, awards referenced, sentiment expressed, platform named.
 - **Getting the name right is the most important thing. Everything else is enrichment.**
+- **User remarks that aren't factual but subjective like reviews and taste or other comments should be avoided for the most part**

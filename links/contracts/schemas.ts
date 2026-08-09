@@ -2,6 +2,7 @@ import * as zod from 'zod';
 
 export enum ContentType {
      Video = "Video",
+     Web = "Web",
      Image = "Image",
      Audio = "Audio",
 	Text = "Text",

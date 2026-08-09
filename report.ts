@@ -1,41 +1,17 @@
-// @ts-nocheck
-// ^ This is a standalone dev-tool script executed directly via `bun run`
-// (bun strips types at runtime, it never type-checks). It's parked at the
-// project root purely for convenience, which means a project-wide `tsc`
-// pass can pick it up and hold it to the app's strict compiler settings it
-// was never written against. @ts-nocheck keeps it out of that entirely.
-// (Cleaner long-term: add this file's path to your tsconfig "exclude".)
+// @ts-nocheck — standalone dev tool, not part of the app's typecheck.
 
 /**
- * code-report.ts
- *
- * Self-contained replacement for leasot: scans your source files for
- * TODO/FIXME (and any custom tags you pass) AND for comments that look
- * like commented-out code, then prints one nicely formatted markdown
- * report covering both.
- *
- * With no arguments, it uses sensible defaults for this project: root-level
- * files plus the links/ and services/ workspaces, ignoring node_modules,
- * dist, build, and .git everywhere (including nested workspace
- * node_modules).
+ * code-report.ts — scans for TODO/FIXME/FEAT/BUG (+ custom tags) and
+ * likely commented-out code, prints one markdown report.
  *
  * Usage:
- *   bun run code-report.ts                          # use all defaults
  *   bun run code-report.ts --exit-nicely > TODO.md
- *
- *   # Or override the defaults explicitly:
- *   bun run code-report.ts "{links,services}/**\/*.{ts,tsx,js,jsx,svelte}" \
- *     --ignore "**\/node_modules/**" \
- *     --tags note,hack,review \
- *     --exit-nicely
+ *   bun run code-report.ts "<glob>" --ignore "<glob>" --tags a,b --exit-nicely
  *
  * Flags:
- *   --ignore <glob>       exclude matching paths (repeatable, ADDED to the
- *                         built-in defaults, not a replacement for them)
- *   --tags <a,b,c>        extra tags to look for besides TODO/FIXME
- *   --exit-nicely         always exit 0, even if TODO/FIXME items exist
- *                         (the commented-out-code section never affects
- *                         the exit code — it's advisory only)
+ *   --ignore <glob>   exclude paths (repeatable, added to built-in defaults)
+ *   --tags <a,b,c>    extra tags beyond the defaults
+ *   --exit-nicely     exit 0 even if tagged items were found
  */
 
 import { Glob } from "bun";
@@ -85,7 +61,7 @@ function toPosix(p: string): string {
 function parseArgs(argv: string[]) {
   const patterns: string[] = [];
   const ignore: string[] = [...DEFAULT_IGNORE];
-  const tags = new Set(["TODO", "FIXME"]);
+  const tags = new Set(["TODO", "FIXME", "FEAT", "BUG", "HACK", "NOTE", "XXX"]);
   let exitNicely = false;
 
   for (let i = 0; i < argv.length; i++) {
@@ -130,6 +106,17 @@ function extractComments(source: string): { line: number; text: string }[] {
     if (text) results.push({ line: lineOf(m.index), text });
   }
   return results.sort((a, b) => a.line - b.line);
+}
+
+// ---------- exclude markers ----------
+// Comments starting with one of these (case-sensitive) are skipped
+// entirely — not reported as a tag, not scored as commented-out code.
+// "IMPORTANT:" is a common convention for a comment you want to KEEP
+// visible in the source, not have it show up as noise in a TODO report.
+const EXCLUDE_MARKERS = ["IMPORTANT:"];
+
+function isExcluded(firstLine: string): boolean {
+  return EXCLUDE_MARKERS.some((marker) => firstLine.startsWith(marker));
 }
 
 // ---------- tag matching (TODO/FIXME/custom) ----------
@@ -253,7 +240,10 @@ async function main() {
     }
 
     for (const { line, text } of extractComments(content)) {
-      const tagMatch = tagRegex.exec(text.split("\n")[0]);
+      const firstLine = text.split("\n")[0];
+      if (isExcluded(firstLine)) continue;
+
+      const tagMatch = tagRegex.exec(firstLine);
       if (tagMatch) {
         const tagName = tagMatch[1].toUpperCase();
         const rest = sanitizeSingleLine(tagMatch[2] || "");
@@ -264,7 +254,7 @@ async function main() {
         codeFindings.push({
           file,
           line,
-          text: sanitizeSingleLine(text.split("\n")[0].slice(0, 120)),
+          text: sanitizeSingleLine(firstLine.slice(0, 120)),
         });
       }
     }
@@ -290,13 +280,16 @@ async function main() {
 
   for (const t of tags) {
     const findings = byTag.get(t.toUpperCase())!;
+    if (findings.length === 0) continue;
     out.push(`## ${t} (${findings.length})\n`);
     out.push(table(findings, "Description"));
   }
 
-  out.push(`## Commented-out code (${codeFindings.length})\n`);
-  out.push("_Heuristic match — please review before trusting; not counted toward exit code._\n");
-  out.push(table(codeFindings, "Comment"));
+  if (codeFindings.length > 0) {
+    out.push(`## Commented-out code (${codeFindings.length})\n`);
+    out.push("_Heuristic match — please review before trusting; not counted toward exit code._\n");
+    out.push(table(codeFindings, "Comment"));
+  }
 
   console.log(out.join("\n"));
 

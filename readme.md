@@ -69,7 +69,7 @@ autocomplete and some placeholder code
 
 ## contributing 👉👈
 contributions are welcome! feel free to open an issue or submit a pull request (˶>⩊<˶)
-- [changelog](assets/roadmap.md)
+- [changelog](assets/changelog.md)
 - [roadmap](assets/roadmap.md)
 - [todos and fixme](assets/todo.md) (pop up, say hi and fix a few bugs) 
 

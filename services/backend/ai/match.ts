@@ -1,4 +1,4 @@
-import { err, InternalError } from "../utils/errors";
+import { err, InternalError, NotFoundError } from "../utils/errors.ts";
 
 export const CONFIDENCE_THRESHOLD = 85;
 export const THRESHOLD_DECREASE_AMOUNT = 15;
@@ -34,7 +34,7 @@ export function fuzzySort(input: string, queries: string[]) : {content: string; 
     for (const q of operateableQueries) {
         const maxLength = Math.max(input.length, q.content.length);
         if (maxLength === 0) {
-            err(new InternalError("Stuff")); // FIXME new error type
+            err(new NotFoundError("Input and query are both empty strings, unrecoverable error")); 
             continue;
         }
 
@@ -105,7 +105,7 @@ export function internalMetadataMatcher(input: string, query: { content: string;
     };
 }
 
-//TODO: Re-check function implementation
+//FEAT: Implement performance testing for this
 export function findClosestMatch(input: string, queries: string[], metadata: { input: string[]; query: string[] }[] = []): string {
     if (queries.length === 0) {
         err(new InternalError("No queries provided for closest match"));
@@ -333,8 +333,8 @@ export function longestCommonSubsequenceLength(a: string, b: string): number {
     return dp[b.length]!;
 }
 
-//TODO: Would have been used for description matching but feature is deprecated for now
-//TODO: Implement description based sorting as well as asking the AI to sort it if all else fails
+//Would have been used for description matching but feature is deprecated for now
+//FEAT: Implement description based sorting as well as asking the AI to sort it if all else fails
 /*function longFuzzySort(input: string, queries: { content: string; score: number }[]) : {content: string; score: number}[] {
       // Altered fuzzy sort with different weights for description which can vary quite a lot between outputs
       // Weird character sequences like names should have a lotta weight also any matched words should also have a lot of weight

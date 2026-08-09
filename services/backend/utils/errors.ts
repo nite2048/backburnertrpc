@@ -30,11 +30,31 @@ export class AuthError extends ExpectedError {
   }
 }
 
+export class APIError extends ExpectedError {
+  constructor(message = "Failed to resolve external APIs. Try again later", options?: ErrorOptions) {
+    super(message, "API_ERROR", 503, options);
+  }
+}
+
+export class ModelError extends ExpectedError {
+  constructor(message = "Model is unsupported or did not connect or behaved strangely", options?: ErrorOptions) {
+    super(message, "OPENROUTER_ERROR", 503, options);
+  }
+}
+
+export class NotFoundError extends ExpectedError {
+  constructor(message = "Requested content was not found", options?: ErrorOptions) {
+    super(message, "NOTFOUND_ERROR", 404, options);
+  }
+}
+
+
 export class InternalError extends ExpectedError {
   constructor(message = "Internal server error", options?: ErrorOptions) {
     super(message, "INTERNAL_SERVER_ERROR", 500, options);
   }
 }
+
 
 export function isExpectedError(error: unknown): error is ExpectedError {
   return error instanceof ExpectedError;

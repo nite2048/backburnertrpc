@@ -1,21 +1,18 @@
 {
      "name": "@links/db",
-     "type": "module",
+
+     "exports": {
+          ".": "./index.ts"
+     },
 
      "scripts": {
           "generate": "prisma generate",
           "migrate": "prisma migrate dev"
      },
 
-     "exports": {
-          ".": "./index.ts"
-     },
-
      "dependencies": {
-          "@prisma/client": "^6"
+          "drizzle-orm": "^1.0.0-rc.4"
      },
 
-     "devDependencies": {
-          "@prisma/client": "^6"
-     }
+     "type": "module"
 }
