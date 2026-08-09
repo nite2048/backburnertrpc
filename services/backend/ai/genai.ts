@@ -209,7 +209,7 @@ export async function anilist(name : string) {
      return ok(parsed.data.data.Page.media);
 }
 
-//TODO: Recheck return types
+//FIXME: Immediate return type reconcilation required
 export async function queryData(metadata: aiInferredMetadata) {
      switch (metadata.contentType) {
           case ContentType.Video:

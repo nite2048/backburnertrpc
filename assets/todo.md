@@ -1,13 +1,13 @@
 # Code Report
 
-_Generated 2026-08-09T12:43:28.383Z · 15 files scanned · 12 findings_
+_Generated 2026-08-09T13:23:04.511Z · 17 files scanned · 11 findings_
 
 ## Summary
 
 | Category | Count |
 |:---|:---:|
-| TODO | 5 |
-| FIXME | 1 |
+| TODO | 3 |
+| FIXME | 2 |
 | FEAT | 4 |
 | BUG | 0 |
 | HACK | 0 |
@@ -15,21 +15,20 @@ _Generated 2026-08-09T12:43:28.383Z · 15 files scanned · 12 findings_
 | XXX | 0 |
 | Commented-out code | 2 |
 
-## TODO (5)
+## TODO (3)
 
 | File | Line | Description |
 |:---|:---:|:---|
-| [links/db/index.ts](links/db/index.ts#L1) | 1 | Check if exports in db package.json is requrired or even correct |
 | [services/backend/ai/genai.ts](services/backend/ai/genai.ts#L91) | 91 | Add safe Parse everywhere |
 | [services/backend/ai/genai.ts](services/backend/ai/genai.ts#L102) | 102 | Look into these below later (doesn't work with multi) |
 | [services/backend/ai/genai.ts](services/backend/ai/genai.ts#L155) | 155 | Add [countryOfOrigin] and update relevent schemas |
-| [services/backend/ai/genai.ts](services/backend/ai/genai.ts#L212) | 212 | Recheck return types |
 
-## FIXME (1)
+## FIXME (2)
 
 | File | Line | Description |
 |:---|:---:|:---|
 | [services/backend/ai/genai.ts](services/backend/ai/genai.ts#L152) | 152 | Anilist language should default to japanese \| Korean \| Chinese / Infer language by country of origin |
+| [services/backend/ai/genai.ts](services/backend/ai/genai.ts#L212) | 212 | Immediate return type reconcilation required |
 
 ## FEAT (4)
 

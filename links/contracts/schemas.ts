@@ -10,7 +10,7 @@ export enum ContentType {
 	Product = "Product"
 }
 
-//Metadata Enforcer present in acquireMetadata in @genai.ts
+//IMPORTANT: Metadata Enforcer present in acquireMetadata in @genai.ts
 export const metadataSchema = zod.object({
   name: zod.string(),
   contentType: zod.nativeEnum(ContentType),
@@ -19,7 +19,7 @@ export const metadataSchema = zod.object({
 
 export const appEntrySchema = zod.object({
 	id: zod.number().int(),
-	mediaType: zod.string(),
+	mediaType: zod.string(), //WHY this will change to the enum specified aboce
 	title: zod.string(),
 	originalTitle: zod.string(),
 	date: zod.string(),

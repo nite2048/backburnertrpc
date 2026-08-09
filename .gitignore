@@ -7,3 +7,4 @@ dist
 *.tsbuildinfo
 .idea
 stuff
+db.sqlite
