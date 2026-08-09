@@ -1,13 +1,11 @@
 {
      "name": "@links/db",
-
+     "type": "module",
      "exports": {
           ".": "./index.ts"
      },
 
      "dependencies": {
           "drizzle-orm": "^1.0.0-rc.4"
-     },
-
-     "type": "module"
+     }
 }
