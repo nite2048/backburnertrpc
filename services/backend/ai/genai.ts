@@ -1,26 +1,21 @@
-import { InternalError, NotFoundError, ModelError, tryCatch, ok, err, APIError } from "../utils/errors.ts";
-import { ContentType, metadataSchema, appEntrySchema, tmdbResponseSchema, anilistResponseSchema } from '@links/contracts'; 
-
-import * as fs from 'node:fs/promises';
 import * as zod from 'zod';
+import * as fs from 'node:fs/promises';
+
+import { InternalError, APIError, NotFoundError, ModelError, toTRPCError, tryCatchSync, tryCatch, ok, err } from "../utils/errors.ts";
+import { ContentType, appEntrySchema, imagelessMetadataSchema, tmdbResponseSchema, tmdbEntrySchemaNormalized,  normalizeTmdbEntry, anilistResponseSchema} from '@links/contracts';
+import { findClosestMatch } from "./match.ts";
 
 import { OpenRouter } from '@openrouter/sdk';
 
 const openRouter = new OpenRouter({
-	apiKey: process.env.OPENROUTER_API_KEY,
+	apiKey: Bun.env.OPENROUTER_API_KEY,
 });
 
 //IMPORTANT: countryOfOrigin for both API is in ISO 3166-1 alpha-2 format
 const INCLUDE_ADULT = true;
 
-type aiInferredMetadata = zod.infer<typeof metadataSchema>;
-type Metadata = aiInferredMetadata & { image: string }; 
+type ImagelessMetadata = zod.infer<typeof imagelessMetadataSchema>;
 type AppEntry = zod.infer<typeof appEntrySchema>;
-
-/* const output: Metadata = {
-  ...parsed.data,
-  image: imageInBase64,
-}; */
 
 export async function acquireMetadata(model: string, imageInBase64: string) {
      const instructions = await tryCatch(fs.readFile("./services/backend/ai/instructions/metadata.txt", "utf8"));
@@ -84,32 +79,35 @@ export async function acquireMetadata(model: string, imageInBase64: string) {
      try {
           json = JSON.parse(content);
      } catch {
-          console.log(content)
           return err(new ModelError("Model returned invalid JSON"));
      }
 
-     //TODO: Add safe Parse everywhere 
+     //TODO: Add safe Parse everywhere
      //FEAT: Check the package jsonrepair
-     const parsed = metadataSchema.safeParse(json);
+     const parsed = imagelessMetadataSchema.safeParse(json);
 
      if (!parsed.success) return err(new ModelError("Validation failed, Model returned invalid schema"));
      return ok(parsed.data);
 }
 
-export async function themoviedb(metadata: aiInferredMetadata) {
+export async function themoviedb(queryName: string) {
 	//https://developer.themoviedb.org/reference/search-multi
 
 	//TODO: Look into these below later (doesn't work with multi)
 	//https://developer.themoviedb.org/docs/append-to-response
 	//https://developer.themoviedb.org/reference/movie-alternative-titles
-     const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(metadata.name)}&include_adult=${INCLUDE_ADULT}&language=en-US&page=1`;
+     const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(queryName)}&include_adult=${INCLUDE_ADULT}&language=en-US&page=1`;
+     const auth : string = 'Bearer ' + Bun.env.TMDB_API_KEY;
+
 
 	const options = {
-		method: "GET",
+          method: "GET",
+          verbose: true,
 		headers: {
 			accept: "application/json",
-			Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
-		},
+			Authorization: auth,
+          },
+		keepalive: true, //BUG: Acutally check what it does
      };
 
 	const result = await tryCatch(fetch(url, options));
@@ -118,39 +116,39 @@ export async function themoviedb(metadata: aiInferredMetadata) {
      const json = await result.data.json();
 
      const parsed = tmdbResponseSchema.safeParse(json);
-     if (!parsed.success) return err(new APIError(parsed.error.message)); 
+     if (!parsed.success)
+
+          return err(new APIError(parsed.error.message));
 
 	const filtered = parsed.data.results.filter(
 		(r) => r.media_type === "movie" || r.media_type === "tv"
      );
 
 	if (filtered.length === 0) {
-		return err(new NotFoundError(`No movie/tv results found for "${metadata.name}"`));
+		return err(new NotFoundError(`No movie/tv results found for "${queryName}"`));
      }
 
-	// Maps the validated TMDB response into a single media model with consistent field names regardless of whether the result is a movie or TV show.
-	const tmdbEntrySchemaNormalized = filtered.map((media) =>
-		appEntrySchema.parse({
-			id: media.id,
-			mediaType: media.media_type,
-			title: media.title ?? media.name ?? "",
-			originalTitle: media.original_title ?? media.original_name ?? "",
-			date: media.release_date ?? media.first_air_date ?? "",
-			imagePath: media.poster_path ?? media.backdrop_path ?? null,
-			overview: media.overview ?? "",
-			popularity: media.popularity ?? null,
-			voteAverage: media.vote_average ?? null,
-			voteCount: media.vote_count ?? null,
-			genreIds: media.genre_ids ?? [],
-			originalLanguage: media.original_language ?? null,
-		})
-	);
+     const normalized: zod.infer<typeof tmdbEntrySchemaNormalized>[] = [];
 
-	return ok(tmdbEntrySchemaNormalized);
+     for (const entry of filtered) {
+          const result = tryCatchSync(() => normalizeTmdbEntry(entry));
+          if (!result.ok)
+               return err(result.error);
+
+          normalized.push(result.data);
+     }
+
+     const output: ImagelessMetadata[] = normalized.map(({ name, ...rest }) => ({
+     	name,
+     	contentType: ContentType.Video,
+     	metaData: rest,
+     }));
+
+     return ok(output);
 }
 
 //FIXME: Anilist language should default to japanese | Korean | Chinese / Infer language by country of origin
-export async function anilist(name : string) {
+export async function anilist(queryName : string) {
      //https://studio.apollographql.com/sandbox/explorer @https://graphql.anilist.co > Query > Page > Media
      //TODO Add [countryOfOrigin] and update relevent schemas
      const query = `query ($search: String) {
@@ -180,7 +178,7 @@ export async function anilist(name : string) {
           }
      }`;
 
-     const variables = { search: name };
+     const variables = { search: queryName };
      const url = 'https://graphql.anilist.co';
      const options = {
           method: 'POST',
@@ -203,26 +201,96 @@ export async function anilist(name : string) {
      if (!parsed.success) return err(new APIError(parsed.error.message));
 
      if(parsed.data.data.Page.media.length === 0){
-          return err(new NotFoundError(`No results found for ${name}`));
+          return err(new NotFoundError(`No results found for ${queryName}`));
      }
 
-     return ok(parsed.data.data.Page.media);
+     let output: ImagelessMetadata[] = []
+
+     for (const { title, ...rest } of parsed.data.data.Page.media) {
+          const english = title.english;
+          const romaji = title.romaji;
+          const native = title.native;
+
+          if (!english && !romaji && !native) {
+               //TODO: Check if this error works as expected
+               return err(
+                    new NotFoundError(`Anilist found no name for ${title}`)
+               );
+          }
+
+          const name: string = english! ?? romaji! ?? native!;
+          const data = {
+               ...(romaji && { romaji }),
+               ...(native && { native }),
+               ...rest,
+          }
+
+          output.push({
+               name: name,
+               contentType: ContentType.Image,
+               metaData: data,
+          })
+     }
+
+     return ok(output);
 }
 
+
 //FIXME: Immediate return type reconcilation required
-export async function queryData(metadata: aiInferredMetadata) {
-     switch (metadata.contentType) {
-          case ContentType.Video:
-               const result = await themoviedb(metadata)
-               if (!result.ok) return err(result.error);
+//IMPORTANT: Final TRPC function which manages identification.
+//TODO: Re consider it's location
+export async function identfyImage(imagePath: string, model: string, isUrl : boolean = false) : Promise<AppEntry>{
+     const base64Image = isUrl ? await imageUrlToBase64(imagePath) : await encodeImageToBase64(imagePath);
+     const aiResult = await acquireMetadata(model, base64Image);
+     console.log(aiResult)
 
-               return ok(result.data);
-          case ContentType.Image:
-               const imageResult = await anilist(metadata.name)
-               if (!imageResult.ok) return err(imageResult.error);
+     if (!aiResult.ok) {
+          throw toTRPCError(aiResult.error)
+     }
 
-               return ok(imageResult.data);
-          default:
-               return err(new InternalError(`Unsupported content type: ${metadata.contentType}`));
+     const metadata = aiResult.data;
+
+     if(metadata.contentType === ContentType.Video) {
+          const apiResults = await themoviedb(metadata.name)
+          if (!apiResults.ok) throw toTRPCError(apiResults.error);
+
+          const match = findClosestMatch(
+              aiResult.data.name,
+              apiResults.data.map(({ name }) => name)
+          );
+
+          return {...apiResults.data[match.originalIndex]!, originalImage: imagePath, aiMetadata : aiResult.data.metaData};
+     }else if(metadata.contentType === ContentType.Text) {
+          const apiResults = await anilist(metadata.name)
+          if (!apiResults.ok) throw toTRPCError(apiResults.error);
+
+          const match = findClosestMatch(
+              aiResult.data.name,
+              apiResults.data.map(({ name }) => name)
+          );
+
+          return {...apiResults.data[match.originalIndex]!, originalImage: imagePath, aiMetadata : aiResult.data.metaData};
+     } else {
+          throw toTRPCError(new InternalError(`Unsupported content type: ${metadata.contentType}`));
+     }
+}
+
+async function encodeImageToBase64(imagePath: string): Promise<string> {
+     const imageBuffer = await fs.readFile(imagePath);
+     const base64Image = imageBuffer.toString('base64');
+     return `data:image/jpeg;base64,${base64Image}`;
+}
+
+async function imageUrlToBase64(url : string) {
+     try {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const mimeType = response.headers.get('content-type');
+          const base64String = buffer.toString('base64');
+          return `data:${mimeType};base64,${base64String}`;
+     } catch (error) {
+          console.error('Conversion failed:', error);
+          throw error;
      }
 }

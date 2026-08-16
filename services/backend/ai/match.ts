@@ -14,22 +14,33 @@ const WEIGHT_LCS = 0.1;
 export const PREFIX_BONUS = 5;
 export const METADATA_BONUS = 2;
 
-export function fuzzySort(input: string, queries: string[]) : {content: string; score: number}[] {
+export function fuzzySort(input: string, queries: string[]) : {content: string; score: number, originalIndex: number}[] {
     input = normalizeString(input);
     const inputTokens = tokenize(input);
     const inputBigrams = bigrams(input);
     const inputTokensSet = new Set(inputTokens);
 
-    const operateableQueries = queries.map((q) => {
-        const normalized = normalizeString(q);
-        return {
-            content: normalized,
-            tokens: tokenize(normalized),
-            tokensSet: new Set(tokenize(normalized)),
-            bigrams: bigrams(normalized),
-            score: 0,
-        };
-    });
+     let operateableQueries: {
+         content: string,
+         tokens: string[],
+         tokensSet: Set<string>,
+         bigrams: string[],
+         originalIndex: number,
+         score: number,
+    }[] = []
+     
+    for (let i = 0; i < queries.length; i++) {
+         const normalized = normalizeString(queries[i]!)
+         operateableQueries.push({
+              content: normalized,
+              tokens: tokenize(normalized),
+              tokensSet: new Set(tokenize(normalized)),
+              bigrams: bigrams(normalized),
+              originalIndex: i,
+              score: 0,
+         })
+    }
+
 
     for (const q of operateableQueries) {
         const maxLength = Math.max(input.length, q.content.length);
@@ -51,21 +62,22 @@ export function fuzzySort(input: string, queries: string[]) : {content: string; 
 
         //Explore whether results are improved when more weight is given to token based macthing algorithms
         //Check whether Math.min(100, ...) is required
-        q.score = Math.round(
-                levenshteinScore * WEIGHT_LEVENSHTEIN +
-                jaroWinklerScore * WEIGHT_JARO_WINKLER +
-                diceCoefficientScore * WEIGHT_DICE +
-                overlapScore * WEIGHT_WORD_OVERLAP +
-                longestCommonSubsequenceScore * WEIGHT_LCS +
-                orderedOverlapScore * WEIGHT_ORDERED_OVERLAP
-         );
+          q.score = Math.round(
+               levenshteinScore * WEIGHT_LEVENSHTEIN +
+               jaroWinklerScore * WEIGHT_JARO_WINKLER +
+               diceCoefficientScore * WEIGHT_DICE +
+               overlapScore * WEIGHT_WORD_OVERLAP +
+               longestCommonSubsequenceScore * WEIGHT_LCS +
+               orderedOverlapScore * WEIGHT_ORDERED_OVERLAP
+          );
     }
 
     // Sorting moved to findClosestMatch, which needs the pre-sort (original, index-aligned) order to correlate candidates back to `metadata`.
-    return operateableQueries.map(({ content, score }) => ({
-        content,
-        score,
-    }));
+     return operateableQueries.map(({ content, score, originalIndex }) => ({
+          content,
+          score,
+          originalIndex,
+     }));
 }
 
 export function externalMetadataMatcher(metadata: { input: string[]; query: string[] }[]): number {
@@ -106,22 +118,20 @@ export function internalMetadataMatcher(input: string, query: { content: string;
 }
 
 //FEAT: Implement performance testing for this
-export function findClosestMatch(input: string, queries: string[], metadata: { input: string[]; query: string[] }[] = []): string {
+export function findClosestMatch(input: string, queries: string[], metadata: { input: string[]; query: string[]}[] = []): {content: string, score: number, originalIndex: number}{
     if (queries.length === 0) {
-        err(new InternalError("No queries provided for closest match"));
-        return "";
+        throw new NotFoundError("No queries provided for closest match")
     }
 
     if (metadata.length > 0 && metadata.length !== queries.length) {
-        err(new InternalError("Metadata length does not match queries length"));
+        throw new NotFoundError("Metadata length does not match queries length");
     }
 
      let TEMP_CONFIDENCE_THRESHOLD = CONFIDENCE_THRESHOLD;
-
+     
      // fuzzySort returns results in the same order as `queries`, so array position doubles as the index into `metadata` before sorting.
      // Sorting happens here, not in fuzzySort, so this is the only place that needs to reconcile "sorted rank" with "original index".
      const fuzzySortedQueries = fuzzySort(input, queries)
-        .map((q, index) => ({ ...q, index }))
         .sort((a, b) => b.score - a.score);
 
     const bestQuery = fuzzySortedQueries[0]!;
@@ -138,28 +148,30 @@ export function findClosestMatch(input: string, queries: string[], metadata: { i
             }
 
             if (ambiguousCount === 1) {
-                return bestQuery.content;
+                 let { originalIndex, score, content } = bestQuery;
+                 return { content, score, originalIndex };
             }
 
             // Single pass over the ambiguous prefix handles both scoring and max-tracking (previously bestQuery was scored separately from the loop over the rest).
-            let winner: { content: string; score: number } | null = null;
+            let winner: { content: string; score: number, originalIndex: number } = { content: "", score: 0, originalIndex: 0 };
             for (let i = 0; i < ambiguousCount; i++) {
                 const candidate = fuzzySortedQueries[i]!;
                 const enhanced = internalMetadataMatcher(input, candidate);
-                const candidateMetadata = metadata[candidate.index];
+                const candidateMetadata = metadata[candidate.originalIndex];
                 enhanced.score += externalMetadataMatcher(candidateMetadata ? [candidateMetadata] : []);
 
-                if (!winner || enhanced.score > winner.score) {
-                    winner = enhanced;
+                if (winner.content === "" || enhanced.score > winner.score) {
+                    winner = { ...enhanced, originalIndex: candidate.originalIndex };
                 }
             }
-            return winner!.content;
+            return winner;
         }
 
         TEMP_CONFIDENCE_THRESHOLD -= THRESHOLD_DECREASE_AMOUNT;
     }
 
-    return bestQuery.content;
+    let { originalIndex, score, content } = bestQuery;
+    return { content, score, originalIndex };
 }
 
 function extractYear(text: string): number | undefined {

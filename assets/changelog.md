@@ -1,4 +1,4 @@
 - minor tweaks
-- fixed some bugs and updated report.ts with some new features
-- intialized drizzle and removed prisma
-- tweaked some packages and little bit of project structure too
+- changed schema
+- fixed some api calling bugs and refined code in @genai.ts
+- added drizzle and removed prisma
