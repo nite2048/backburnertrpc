@@ -227,7 +227,7 @@ export async function anilist(queryName : string) {
 
           output.push({
                name: name,
-               contentType: ContentType.Image,
+               contentType: ContentType.Text,
                metaData: data,
           })
      }
@@ -239,10 +239,9 @@ export async function anilist(queryName : string) {
 //FIXME: Immediate return type reconcilation required
 //IMPORTANT: Final TRPC function which manages identification.
 //TODO: Re consider it's location
-export async function identfyImage(imagePath: string, model: string, isUrl : boolean = false) : Promise<AppEntry>{
+export async function identifyImage(imagePath: string, model: string, isUrl : boolean = false) : Promise<AppEntry>{
      const base64Image = isUrl ? await imageUrlToBase64(imagePath) : await encodeImageToBase64(imagePath);
      const aiResult = await acquireMetadata(model, base64Image);
-     console.log(aiResult)
 
      if (!aiResult.ok) {
           throw toTRPCError(aiResult.error)
@@ -290,7 +289,6 @@ async function imageUrlToBase64(url : string) {
           const base64String = buffer.toString('base64');
           return `data:${mimeType};base64,${base64String}`;
      } catch (error) {
-          console.error('Conversion failed:', error);
           throw error;
      }
 }

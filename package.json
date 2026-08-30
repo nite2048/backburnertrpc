@@ -8,11 +8,11 @@
           "server": "bun --hot services/backend",
           "client": "bun --hot --cwd services/frontend dev",
 
-          "generate": "drizzle-kit generate",
-          "migrate": "drizzle-kit migrate",
-          "push": "drizzle-kit push",
-          "studio": "drizzle-kit studio",
-          "check": "drizzle-kit check",
+          "generate": "bunx --bun drizzle-kit generate --config=drizzle-dev.config.ts",
+          "migrate": "bunx --bun drizzle-kit migrate --config=drizzle-dev.config.ts",
+          "push": "bunx --bun drizzle-kit push --config=drizzle-dev.config.ts",
+          "studio": "bunx --bun drizzle-kit studio --config=drizzle-dev.config.ts",
+          "check": "bunx --bun drizzle-kit check --config=drizzle-dev.config.ts",
           
           "todos": "bun run report.ts --exit-nicely > assets/todo.md"
      },

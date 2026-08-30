@@ -113,7 +113,7 @@ function extractComments(source: string): { line: number; text: string }[] {
 // entirely — not reported as a tag, not scored as commented-out code.
 // "IMPORTANT:" is a common convention for a comment you want to KEEP
 // visible in the source, not have it show up as noise in a TODO report.
-const EXCLUDE_MARKERS = ["IMPORTANT:"];
+const EXCLUDE_MARKERS = ["IMPORTANT:", "NOTE:"];
 
 function isExcluded(firstLine: string): boolean {
   return EXCLUDE_MARKERS.some((marker) => firstLine.startsWith(marker));

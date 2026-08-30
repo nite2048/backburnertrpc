@@ -1,4 +1,4 @@
 - minor tweaks
-- changed schema
-- fixed some api calling bugs and refined code in @genai.ts
-- added drizzle and removed prisma
+- added db schema
+- fixed bugs
+- added complete drizzle implementation

@@ -24,6 +24,7 @@
     "links/db": {
       "name": "@links/db",
       "dependencies": {
+        "@links/contracts": "workspace:*",
         "drizzle-orm": "^1.0.0-rc.4",
       },
     },

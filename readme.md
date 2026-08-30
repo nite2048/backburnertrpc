@@ -18,7 +18,7 @@ scared of wasting time *now*? waste it later, one screenshot takes care of it al
 
 ## stack ⚙
 - backend - the [bun runtime](https://bun.sh/), [typescript](https://www.typescriptlang.org/), [trpc](https://trpc.io/) (thanks theo) and [zod](https://zod.dev/)
-- database - under contemplation (ᵕ•_•)
+- database - [drizzle](https://orm.drizzle.team/) with bun driver
 - frontend - [svelte](https://svelte.dev/) my guy \*high fives\*
 - auth - github and google + custom oauth
 - apis - [tmdb](https://developer.themoviedb.org/) and [anilist](https://anilist.gitbook.io/anilist-apiv2-docs/) 🙇‍♀️
