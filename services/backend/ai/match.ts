@@ -1,3 +1,4 @@
+import { meta } from "zod";
 import { err, InternalError, NotFoundError } from "../utils/errors.ts";
 
 export const CONFIDENCE_THRESHOLD = 85;
@@ -119,13 +120,17 @@ export function internalMetadataMatcher(input: string, query: { content: string;
 
 //FEAT: Implement performance testing for this
 export function findClosestMatch(input: string, queries: string[], metadata: { input: string[]; query: string[]}[] = []): {content: string, score: number, originalIndex: number}{
-    if (queries.length === 0) {
-        throw new NotFoundError("No queries provided for closest match")
-    }
+     if (queries.length === 0) {
+          throw new NotFoundError("No queries provided for closest match")
+     }
 
-    if (metadata.length > 0 && metadata.length !== queries.length) {
-        throw new NotFoundError("Metadata length does not match queries length");
-    }
+     if (queries.length == 1) {
+          return {content : input, score : Number.POSITIVE_INFINITY, originalIndex: 0}
+     }
+
+     if (metadata.length > 0 && metadata.length !== queries.length) {
+          throw new NotFoundError("Metadata length does not match queries length");
+     }
 
      let TEMP_CONFIDENCE_THRESHOLD = CONFIDENCE_THRESHOLD;
      
@@ -156,9 +161,12 @@ export function findClosestMatch(input: string, queries: string[], metadata: { i
             let winner: { content: string; score: number, originalIndex: number } = { content: "", score: 0, originalIndex: 0 };
             for (let i = 0; i < ambiguousCount; i++) {
                 const candidate = fuzzySortedQueries[i]!;
-                const enhanced = internalMetadataMatcher(input, candidate);
-                const candidateMetadata = metadata[candidate.originalIndex];
-                enhanced.score += externalMetadataMatcher(candidateMetadata ? [candidateMetadata] : []);
+                 const enhanced = internalMetadataMatcher(input, candidate);
+
+                 if (metadata.length != 0) {
+                      const candidateMetadata = metadata[candidate.originalIndex];
+                      enhanced.score += externalMetadataMatcher(candidateMetadata ? [candidateMetadata] : []);
+                } 
 
                 if (winner.content === "" || enhanced.score > winner.score) {
                     winner = { ...enhanced, originalIndex: candidate.originalIndex };

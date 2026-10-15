@@ -1,21 +1,15 @@
 import * as zod from 'zod';
 import * as fs from 'node:fs/promises';
 
-import { InternalError, APIError, NotFoundError, ModelError, toTRPCError, tryCatchSync, tryCatch, ok, err } from "../utils/errors.ts";
-import { ContentType, appEntrySchema, imagelessMetadataSchema, tmdbResponseSchema, tmdbEntrySchemaNormalized,  normalizeTmdbEntry, anilistResponseSchema} from '@links/contracts';
-import { findClosestMatch } from "./match.ts";
+import {APIError, NotFoundError, ModelError, tryCatchSync, tryCatch, ok, err } from "../utils/errors.ts";
+import {ContentType, type AppEntry, type ImagelessMetadata, imagelessMetadataSchema, tmdbResponseSchema, tmdbEntrySchemaNormalized,  normalizeTmdbEntry, anilistResponseSchema} from '@links/contracts';
 
 import { OpenRouter } from '@openrouter/sdk';
 
-const openRouter = new OpenRouter({
-	apiKey: Bun.env.OPENROUTER_API_KEY,
-});
+const openRouter = new OpenRouter({apiKey: Bun.env.OPENROUTER_API_KEY});
 
 //IMPORTANT: countryOfOrigin for both API is in ISO 3166-1 alpha-2 format
 const INCLUDE_ADULT = true;
-
-type ImagelessMetadata = zod.infer<typeof imagelessMetadataSchema>;
-type AppEntry = zod.infer<typeof appEntrySchema>;
 
 export async function acquireMetadata(model: string, imageInBase64: string) {
      const instructions = await tryCatch(fs.readFile("./services/backend/ai/instructions/metadata.txt", "utf8"));
@@ -233,62 +227,4 @@ export async function anilist(queryName : string) {
      }
 
      return ok(output);
-}
-
-
-//FIXME: Immediate return type reconcilation required
-//IMPORTANT: Final TRPC function which manages identification.
-//TODO: Re consider it's location
-export async function identifyImage(imagePath: string, model: string, isUrl : boolean = false) : Promise<AppEntry>{
-     const base64Image = isUrl ? await imageUrlToBase64(imagePath) : await encodeImageToBase64(imagePath);
-     const aiResult = await acquireMetadata(model, base64Image);
-
-     if (!aiResult.ok) {
-          throw toTRPCError(aiResult.error)
-     }
-
-     const metadata = aiResult.data;
-
-     if(metadata.contentType === ContentType.Video) {
-          const apiResults = await themoviedb(metadata.name)
-          if (!apiResults.ok) throw toTRPCError(apiResults.error);
-
-          const match = findClosestMatch(
-              aiResult.data.name,
-              apiResults.data.map(({ name }) => name)
-          );
-
-          return {...apiResults.data[match.originalIndex]!, originalImage: imagePath, aiMetadata : aiResult.data.metaData};
-     }else if(metadata.contentType === ContentType.Text) {
-          const apiResults = await anilist(metadata.name)
-          if (!apiResults.ok) throw toTRPCError(apiResults.error);
-
-          const match = findClosestMatch(
-              aiResult.data.name,
-              apiResults.data.map(({ name }) => name)
-          );
-
-          return {...apiResults.data[match.originalIndex]!, originalImage: imagePath, aiMetadata : aiResult.data.metaData};
-     } else {
-          throw toTRPCError(new InternalError(`Unsupported content type: ${metadata.contentType}`));
-     }
-}
-
-async function encodeImageToBase64(imagePath: string): Promise<string> {
-     const imageBuffer = await fs.readFile(imagePath);
-     const base64Image = imageBuffer.toString('base64');
-     return `data:image/jpeg;base64,${base64Image}`;
-}
-
-async function imageUrlToBase64(url : string) {
-     try {
-          const response = await fetch(url);
-          const arrayBuffer = await response.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          const mimeType = response.headers.get('content-type');
-          const base64String = buffer.toString('base64');
-          return `data:${mimeType};base64,${base64String}`;
-     } catch (error) {
-          throw error;
-     }
 }

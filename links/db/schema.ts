@@ -1,58 +1,100 @@
-import { check, sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { check, sqliteTable, text, integer, index, unique } from 'drizzle-orm/sqlite-core';
 import { defineRelations, sql } from 'drizzle-orm';
 
 import { ContentType } from '@links/contracts';
 
-//NOTE: sqlite cehck can only contain literal sql, each value must be inlined via sql.raw() with manual quoting, not interpolated
+//NOTE: sqlite check can only contain literal sql, each value must be inlined via sql.raw() with manual quoting, not interpolated
 const quoteSqlLiteral = (value: string) => `'${value.replace(/'/g, "''")}'`;
-const contentTypes = Object.values(ContentType) as [ContentType, ...ContentType[]];
- 
-export const userTable = sqliteTable('user',
-     {
-     	id: text().primaryKey(),
-     	name: text(),
-     	createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-     }
-);
- 
-//NOTE: contentType is a typescript only literal union on inferred selects/inserts doesnt enforce anything on db which is why the check() constraint still exists.
-export const appEntryTable = sqliteTable('app_entry',
-     {
-		id: integer().primaryKey({ autoIncrement: true }),
-		userId: text()
-			.notNull()
-			.references(() => userTable.id, { onDelete: 'cascade' }),
-		name: text().notNull(),
-		contentType: text({ enum: contentTypes }).notNull(),
-		originalImage: text(),
-		metaData: text({ mode: 'json' }).notNull(),
-		aiMetadata: text({ mode: 'json' }).notNull(),
-	},
-	(table) => [
-		check(
-			'content_type_check',
-			sql`${table.contentType} IN (${sql.raw(
-				contentTypes.map(quoteSqlLiteral).join(', '),
-			)})`,
-		),
-		index('app_entry_user_id_idx').on(table.userId),
-	],
- );
 
-const schema = { userTable, appEntryTable };
- 
+//NOTE: contentType is a typescript only literal union on inferred selects/inserts
+const contentTypes = Object.values(ContentType) as [ContentType, ...ContentType[]];
+type Metadata = Record<string, unknown>;
+
+//FEAT: Hashing and encryption for the fields key and value
+export const userTable = sqliteTable(
+     'user',
+     {
+          id: text().primaryKey().$defaultFn(() => crypto.randomUUID()),
+          name: text().notNull(),
+          key: text().notNull(),
+          value: text().notNull(),
+          createdAt: integer({ mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+     },
+     (table) => [
+          // The (name, key, value) triple is the credential, so it must be unique together, no column is unique on its own.
+          unique('user_credential_unique').on(table.name, table.key, table.value),
+     ],
+);
+
+export const appEntryTable = sqliteTable(
+     "app_entry",
+     {
+       userId: text().notNull().references(() => userTable.id, { onDelete: "cascade" }),
+       id: integer().notNull().primaryKey({ autoIncrement: true }),
+
+       name: text().notNull(),
+       contentType: text({ enum: contentTypes }).notNull(),
+       metaData: text({ mode: "json" }).$type<Metadata>().notNull(),
+       aiMetadata: text({ mode: "json" }).$type<Metadata>().notNull(),
+
+       originalImage: text().notNull(),
+     },
+
+     (table) => [
+          //ContentTypes does not enforce anything on the database; which is why the check() constraint still exists
+          check(
+               'content_type_check',
+               sql`${table.contentType} IN (${sql.raw(
+                    contentTypes.map(quoteSqlLiteral).join(', '),
+               )})`,
+          ),
+          index('app_entry_user_id_idx').on(table.userId),
+     ],
+);
+
 //NOTE: defineRelations keys off the `schema` object's property names, not the DB table names ('user' / 'app_entry').
- export const relations = defineRelations(schema, (r) => ({
-	userTable: {
-		appEntries: r.many.appEntryTable({
-			from: r.userTable.id,
-			to: r.appEntryTable.userId,
-		}),
-	},
-	appEntryTable: {
-		user: r.one.userTable({
-			from: r.appEntryTable.userId,
-			to: r.userTable.id,
-		}),
-	},
- }));
+const schema = { userTable, appEntryTable };
+export const relations = defineRelations(schema, (r) => ({
+     userTable: {
+          entries: r.many.appEntryTable({
+               from: r.userTable.id,
+               to: r.appEntryTable.userId,
+          }),
+     },
+     appEntryTable: {
+          user: r.one.userTable({
+               from: r.appEntryTable.userId,
+               to: r.userTable.id,
+          }),
+     },
+}));
+
+//Compile time database schema checker, so that no unintenional or accidental changes are made
+type EntryRow = typeof appEntryTable.$inferSelect;
+type UserRow = typeof userTable.$inferSelect;
+
+//Bi directional type checker (~a is subset of b and b is subset of a)
+type Mutual<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false;
+type Assert<T extends true> = T;
+
+type _EntryTableMatchesSchema = Assert<Mutual<EntryRow,
+     {
+      userId: string;
+      id: number;
+      name: string;
+      contentType: (typeof contentTypes)[number];
+      metaData: Metadata;
+      aiMetadata: Metadata;
+      originalImage: string;
+    }>
+>
+
+type _UserTableMatchesSchema = Assert<Mutual<UserRow,
+    {
+      id: string;
+      name: string;
+      key: string;
+      value: string;
+      createdAt: Date;
+    }>
+>;

@@ -9,6 +9,25 @@ export enum ContentType {
 	Product = "Product"
 }
 
+export type User = zod.infer<typeof userSchema>;
+export type AppEntry = zod.infer<typeof appEntrySchema>;
+export type ImagelessMetadata = zod.infer<typeof imagelessMetadataSchema>;
+
+export type AuthenticatedUser = Extract<User, { isLoggedIn: true }>;
+export type UnauthenticatedUser = Extract<User, { isLoggedIn: false }>;
+
+
+const userSchema = zod.discriminatedUnion("isLoggedIn", [
+	zod.object({
+		isLoggedIn: zod.literal(false),
+	}),
+	zod.object({
+		isLoggedIn: zod.literal(true),
+		name: zod.string(),
+		id: zod.string(),
+	}),
+]);
+
 //IMPORTANT: Metadata Enforcer present in acquireMetadata in @genai.ts
 export const imagelessMetadataSchema = zod.object({
   name: zod.string(),
@@ -17,14 +36,13 @@ export const imagelessMetadataSchema = zod.object({
 });
 
 export const appEntrySchema = zod.object({
+     id : zod.number(),
 	name: zod.string(),
      contentType: zod.nativeEnum(ContentType),
-     originalImage: zod.string().nullish(),
+     originalImage: zod.string(),
      metaData: zod.record(zod.string(), zod.unknown()),
 	aiMetadata: zod.record(zod.string(), zod.unknown()),
 });
-
-//final metadata hsoukld contain original image and oimage url
 
 export const tmdbEntrySchema = zod.object({
 	adult: zod.boolean().nullish(),
@@ -117,6 +135,7 @@ export const anilistResponseSchema = zod.object({
 		}),
 	}),
 });
+
 
 export function normalizeTmdbEntry(entry: zod.infer<typeof tmdbEntrySchema>): zod.infer<typeof tmdbEntrySchemaNormalized>{
 	const { title, original_title, release_date, video, name, original_name, first_air_date, origin_country, ...rest } = entry;

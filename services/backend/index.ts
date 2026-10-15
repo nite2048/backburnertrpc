@@ -1,6 +1,8 @@
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
-import { AppRouter } from './router';
-
+import { createTRPCContext } from './auth.ts'
+import {appRouter}  from './router.ts';
+import { logTRPCError } from './utils/logger.ts';
+ 
 const CORS_HEADERS = {
      'Access-Control-Allow-Origin': '*',
      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -18,8 +20,9 @@ Bun.serve({
           const response = await fetchRequestHandler({
                endpoint: '/',
                req: request,
-               router: AppRouter,
-               createContext: () => ({}),
+               router: appRouter,
+               onError: logTRPCError,
+               createContext: createTRPCContext,
           });
 
           const headers = new Headers(response.headers);
