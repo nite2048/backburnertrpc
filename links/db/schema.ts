@@ -1,5 +1,5 @@
-import { check, sqliteTable, text, integer, index, unique } from 'drizzle-orm/sqlite-core';
-import { defineRelations, sql } from 'drizzle-orm';
+import { check, sqliteTable, blob, text, integer, index, unique } from 'drizzle-orm/sqlite-core';
+import { defineRelations, sql, type SQL } from 'drizzle-orm';
 
 import { ContentType } from '@links/contracts';
 
@@ -9,6 +9,10 @@ const quoteSqlLiteral = (value: string) => `'${value.replace(/'/g, "''")}'`;
 //NOTE: contentType is a typescript only literal union on inferred selects/inserts
 const contentTypes = Object.values(ContentType) as [ContentType, ...ContentType[]];
 type Metadata = Record<string, unknown>;
+
+if (!Bun.env.BASE_URL) throw new Error(".env not configured")
+const IMAGE_BASE_URL =  `${Bun.env.BASE_URL}/static/images/` as const ;
+type ImageUrl = `${typeof IMAGE_BASE_URL}${number}`;
 
 //FEAT: Hashing and encryption for the fields key and value
 export const userTable = sqliteTable(
@@ -29,15 +33,21 @@ export const userTable = sqliteTable(
 export const appEntryTable = sqliteTable(
      "app_entry",
      {
-       userId: text().notNull().references(() => userTable.id, { onDelete: "cascade" }),
-       id: integer().notNull().primaryKey({ autoIncrement: true }),
+          id: integer().notNull().primaryKey({ autoIncrement: true }),
+          userId: text().notNull().references(() => userTable.id, { onDelete: "cascade" }),
 
-       name: text().notNull(),
-       contentType: text({ enum: contentTypes }).notNull(),
-       metaData: text({ mode: "json" }).$type<Metadata>().notNull(),
-       aiMetadata: text({ mode: "json" }).$type<Metadata>().notNull(),
+          name: text().notNull(),
+          contentType: text({ enum: contentTypes }).notNull(),
+          metaData: text({ mode: "json" }).$type<Metadata>().notNull(),
+          aiMetadata: text({ mode: "json" }).$type<Metadata>().notNull(),
 
-       originalImage: text().notNull(),
+          originalImage: text()
+               .$type<ImageUrl>()
+               .generatedAlwaysAs(
+                    sql`${sql.raw(quoteSqlLiteral(IMAGE_BASE_URL))} || "id"`,
+                    { mode: "virtual" },
+               )
+               .notNull(),
      },
 
      (table) => [
@@ -52,8 +62,22 @@ export const appEntryTable = sqliteTable(
      ],
 );
 
+//Mimetype is always lossy WEBP
+export const blobTable = sqliteTable("blobs", {
+     data: blob("data", { mode: "buffer" }).notNull(),
+
+     entryId: integer("entry_id")
+       .primaryKey()
+       .references(() => appEntryTable.id, { onDelete: "cascade" }),
+
+     createdAt: integer("created_at")
+          .notNull()
+          .$defaultFn(() => Math.floor(Date.now() / 1000)),
+});
+
+
 //NOTE: defineRelations keys off the `schema` object's property names, not the DB table names ('user' / 'app_entry').
-const schema = { userTable, appEntryTable };
+const schema = { userTable, appEntryTable, blobTable };
 export const relations = defineRelations(schema, (r) => ({
      userTable: {
           entries: r.many.appEntryTable({
@@ -66,30 +90,36 @@ export const relations = defineRelations(schema, (r) => ({
                from: r.appEntryTable.userId,
                to: r.userTable.id,
           }),
+          image: r.one.blobTable({ from: r.appEntryTable.id, to: r.blobTable.entryId }),
      },
+
+     blobTable: {
+       entry: r.one.appEntryTable({ from: r.blobTable.entryId, to: r.appEntryTable.id }),
+     }
 }));
 
 //Compile time database schema checker, so that no unintenional or accidental changes are made
-type EntryRow = typeof appEntryTable.$inferSelect;
+type EntryRow = Readonly<typeof appEntryTable.$inferSelect>;
 type UserRow = typeof userTable.$inferSelect;
+type BlobRow = typeof blobTable.$inferSelect;
 
 //Bi directional type checker (~a is subset of b and b is subset of a)
 type Mutual<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false;
 type Assert<T extends true> = T;
 
-type _EntryTableMatchesSchema = Assert<Mutual<EntryRow,
+type _EntryTableSchemaRestrictions = Assert<Mutual<EntryRow,
      {
-      userId: string;
-      id: number;
-      name: string;
-      contentType: (typeof contentTypes)[number];
-      metaData: Metadata;
-      aiMetadata: Metadata;
-      originalImage: string;
-    }>
+          userId: string;
+          id: number;
+          name: string;
+          contentType: (typeof contentTypes)[number];
+          metaData: Metadata;
+          aiMetadata: Metadata;
+          originalImage: ImageUrl;
+     }>
 >
 
-type _UserTableMatchesSchema = Assert<Mutual<UserRow,
+type _UserTableSchemaRestrictions = Assert<Mutual<UserRow,
     {
       id: string;
       name: string;
@@ -97,4 +127,12 @@ type _UserTableMatchesSchema = Assert<Mutual<UserRow,
       value: string;
       createdAt: Date;
     }>
+>;
+
+type _BlobTableSchemaRestrictions = Assert<Mutual<BlobRow,
+     {
+          data: Buffer;
+          entryId: number;
+          createdAt: number;
+     }>
 >;

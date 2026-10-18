@@ -10,12 +10,16 @@ import { createHttpEntry } from "./actions";
 
 import {
      findEntryById, findEntriesByUserId, updateEntry, deleteEntry,
-     createUser, findUserByCredentials, findUserById, updateUser, deleteUser
+     createUser, findUserByCredentials, findUserById, updateUser, deleteUser,
+     storeImage,
+     getImageInBytes
 } from '@links/db';
 
+import type { BunRequest } from "bun";
 
 const trpc = initTRPC.context<User>().create();
 export const router = trpc.router;
+
 const base = trpc.procedure.use(async ({ next }) => {
      const result = await next();
      if (!result.ok) throw toTRPCError(result.error);
@@ -26,14 +30,14 @@ export const publicProcedure = base;
 
 const protectedProcedure = base.use(({ ctx, next }) => {
        if (!ctx.isLoggedIn) throw toTRPCError(new AuthError("Unauthorized"));
-       return next({ ctx: <AuthenticatedUser>ctx }); 
+       return next({ ctx: <AuthenticatedUser>ctx });
 });
 
 const publicOnlyProcedure = base.use(({ ctx, next }) => {
      if (ctx.isLoggedIn)
      throw toTRPCError(new ForbiddenError("Already signed in, you cannot access this route"));
 
-     return next({ ctx: <UnauthenticatedUser>ctx }); 
+     return next({ ctx: <UnauthenticatedUser>ctx });
 });
 
 
@@ -44,8 +48,8 @@ const authRouter = router({
                .input(
                     zod.object({
                          name: zod.string().trim().min(1).max(100),
-                         key: zod.string().min(8).max(128),
-                         value: zod.string().min(8).max(128)
+                         key: zod.string().min(2).max(128),
+                         value: zod.string().min(3).max(128)
                     }),
                )
                .mutation(async ({ input }) => {
@@ -67,19 +71,19 @@ const authRouter = router({
 		     .input(
                     zod.object({
                          name: zod.string().trim().min(1).max(100),
-                         key: zod.string().min(8).max(128),
-                         value: zod.string().min(8).max(128)
+                         key: zod.string().min(2).max(128),
+                         value: zod.string().min(3).max(128)
                     }),
-               )               
+               )
 			.mutation(async ({ input }) => {
                     const found = await tryCatch(findUserByCredentials(input));
                     //NotFoundError reaches the client as NOT_FOUND, which tells an attacker whether an account exists. Convert it to AuthError, also such that real DB failures can keep their own code
                     if (!found.ok) throw toTRPCError(found.error instanceof NotFoundError ? new AuthError("Invalid credentials") : found.error);
-                                   
+
                     //FEAT: Find a way to ensure all the other tokens of the user is discarded
                     const token = await signToken(found.data);
                     if (!token.ok) throw toTRPCError(token.error);
-               
+
                     const { isLoggedIn, ...output } = found.data;
                     return { token: token.data, output };
 			}),
@@ -99,27 +103,27 @@ export const userRouter = router({
                .input(
                     zod.object({
                          name: zod.string().trim().min(1).max(100).optional(),
-                         key: zod.string().min(8).max(128).optional(),
-                         value: zod.string().min(8).max(128).optional(),
+                         key: zod.string().min(2).max(128).optional(),
+                         value: zod.string().min(3).max(128).optional(),
                     }).refine(p => Object.keys(p).length > 0, { message: 'Nothing to update' }),
                )
                .mutation(async ({ ctx, input }) => {
                     const user = await updateUser(ctx.id, input);
-                    
+
                     // A new token is issued because the name claim in the old one is now stale
                     const token = await signToken(user);
                     if (!token.ok) throw toTRPCError(token.error);
-               
+
                     const { isLoggedIn, ...output } = user;
                     return { token: token.data, output };
                }),
 
           delete: protectedProcedure.mutation(async ({ ctx }) => {
                     const user = await deleteUser(ctx.id);
-               
+
                     //revokeTokens(ctx.id);
                     const { isLoggedIn, ...output } = user
-                    return output              
+                    return output
                }),
 
           entries: router({
@@ -131,13 +135,12 @@ export const userRouter = router({
 
                update: protectedProcedure
                     .input(appEntrySchema
-                         .omit({ originalImage: true })
                          .partial().required({id: true})
                          .refine(({ id, ...patch }) => Object.values(patch).some(v => v !== undefined),
                               { message: 'Nothing to update' }
                          ))
                     .mutation(async ({ ctx, input }) => {
-                         
+
                          const { id, ...patch } = input;
                          return await updateEntry(id, ctx.id, patch);
                     }),
@@ -146,7 +149,7 @@ export const userRouter = router({
                     .input(zod.number().positive().int())
                     .mutation(async ({ ctx, input }) => await deleteEntry(input, ctx.id)),
           }),
-          
+
           actions: router({
                find: protectedProcedure
                     .input(zod.object({ image: zod.string(), model: zod.string() }))
@@ -154,7 +157,7 @@ export const userRouter = router({
                          return await createHttpEntry(input.image, input.model, ctx)
                     }),
           })
-     })	
+     })
 });
 
 const apiRouter = router({
@@ -162,6 +165,54 @@ const apiRouter = router({
 		return { status: 'ok' };
      }),
 });
+
+//Only image uploads take place here, image is served using Bun file serve
+// export const imageRouter = router({
+//      //FIXME: Preprocess can error ig, remove this if it doesnt
+//      upload: protectedProcedure
+//           .input(
+//                zod.preprocess(
+//                     (input) => {
+//                          if (!(input instanceof FormData)) return input;
+//
+//                          return {
+//                               id: input.get("id"),
+//                               file: input.get("file"),
+//                          };
+//                     },
+//                     zod.object({
+//                          id: zod.coerce.number().int().positive(),
+//                          file: zod.instanceof(File),
+//                     }),
+//                ),
+//           )
+//           //FIXME: Allow only blob uploads at a later time
+//           .mutation(({ input, ctx }) => {
+//                if(!input.id || !input.file) throw toTRPCError({ code: "BAD_REQUEST", message: "entryId and file are required" })
+//                return storeImage(ctx.id, input.id, input.file);
+//           }),
+// });
+
+
+export async function serveImage(req: BunRequest<"/static/images/:id">): Promise<Response> {
+     const result = zod.coerce.number().int().positive().safeParse(req.params.id);
+     if (!result.success) return new Response("Invalid entry ID", { status: 400 });
+
+     const entryId = result.data;
+     const bytes = await getImageInBytes(entryId);
+
+     if (!bytes) return new Response("Image not found", { status: 404 });
+
+     const etag = `"${Bun.hash(bytes).toString(36)}"`;
+     const cacheHeaders = {
+          ETag: etag,
+          "Cache-Control": "public, max-age=3600",
+          "X-Content-Type-Options": "nosniff",
+     };
+
+     if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: cacheHeaders });
+     return new Response(bytes, { headers: {...cacheHeaders, "Content-Type": "image/webp"}});
+}
 
 export const appRouter = trpc.mergeRouters(userRouter, apiRouter, authRouter);
 export type AppRouter = typeof appRouter;

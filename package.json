@@ -3,29 +3,23 @@
      "module": "index.ts",
      "type": "module",
      "private": true,
-     
      "scripts": {
           "server": "bun --hot services/backend",
           "client": "bun --hot --cwd services/frontend dev",
-
           "generate": "bun --cwd links/db drizzle-kit generate --config=drizzle.config.ts",
           "migrate": "bun --cwd links/db drizzle-kit migrate --config=drizzle.config.ts",
           "push": "bun --cwd links/db drizzle-kit push --config=drizzle.config.ts",
           "studio": "bun --cwd links/db drizzle-kit studio --config=drizzle.config.ts",
           "check": "bun --cwd links/db drizzle-kit check --config=drizzle.config.ts",
-          
           "todos": "bun run report.ts --exit-nicely > assets/todo.md"
      },
-     
      "workspaces": [
           "services/*",
           "links/*"
      ],
-     
      "devDependencies": {
-          "@types/bun": "^1.3.14"
+          "@types/bun": "^1.4.3"
      },
-     
      "peerDependencies": {
           "typescript": "^6.0.3"
      }

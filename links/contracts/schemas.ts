@@ -39,7 +39,6 @@ export const appEntrySchema = zod.object({
      id : zod.number(),
 	name: zod.string(),
      contentType: zod.nativeEnum(ContentType),
-     originalImage: zod.string(),
      metaData: zod.record(zod.string(), zod.unknown()),
 	aiMetadata: zod.record(zod.string(), zod.unknown()),
 });

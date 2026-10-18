@@ -5,7 +5,7 @@
 **~~why~~ does your watchlist need ai?**          
 heck, why stop at watchlists? enshittfy and romanticize internet consumerism culture with backburner for all it's worth, whether it's expensive t-shirts, hour-long video essays or hollywood slop - consuming all of them was never easier.
 
-scared of wasting time *now*? waste it later, one screenshot takes care of it all; enjoy that uninterrupted never-ending euphoria of content addiction like never before.
+scared of wasting time *now*? waste it later, one screenshot takes care of it all; enjoy that familiar eternal doomscrolling trance fueled, by an uninterrupted euphoria of content addiction like never before.
 
  (satire)
  
@@ -20,7 +20,7 @@ scared of wasting time *now*? waste it later, one screenshot takes care of it al
 - backend - the [bun runtime](https://bun.sh/), [typescript](https://www.typescriptlang.org/), [trpc](https://trpc.io/) (thanks theo) and [zod](https://zod.dev/)
 - database - [drizzle](https://orm.drizzle.team/) with bun driver
 - frontend - [svelte](https://svelte.dev/) my guy \*high fives\*
-- auth - github and google + custom oauth
+- auth - very vulnerable 😰
 - apis - [tmdb](https://developer.themoviedb.org/) and [anilist](https://anilist.gitbook.io/anilist-apiv2-docs/) 🙇‍♀️
 - free ai inference - [openrouter](https://openrouter.ai/) 🙇‍♀️🙇‍♀️🙇‍♀️
 
@@ -40,12 +40,21 @@ cd backburnertrpc
 ```bash 
 bun install
 ```
-create a `.env` in the root folder
+i. create a `.env` in the root folder and modify these as neccessary
 ```env
 PORT=3000
+BASE_URL="http://localhost:${PORT}"
+JWT_SECRET="yoursecrethere"
+```
+```env
 OPENROUTER_API_KEY='yourkeyhere'
 TMDB_API_KEY='yourkeyhere'
 ```
+ii. apply database migrations and build the schema (a `db.sqlite` file will appear at [db folder](links/db))
+```bash 
+bun run push
+```
+iii. then,
 ```bash 
 bun run server
 ```
@@ -56,6 +65,10 @@ bun run client
 ### • code report (optional)
 ```bash 
 bun run todos
+```
+### • db view (optional)
+```bash 
+bun run studio
 ```
 
 ## previews 💄

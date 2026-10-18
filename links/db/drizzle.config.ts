@@ -4,7 +4,6 @@ export default defineConfig({
      schema: "./schema.ts",
      out: "./drizzle",
      
-
      dialect: "sqlite",
 
      dbCredentials: {
