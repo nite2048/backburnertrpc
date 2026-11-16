@@ -1,0 +1,217 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    position: relative;
+    border: none;
+    z-index: 3;
+}
+
+:root {
+    font-size: 16px;
+    background-color: var(--bg);
+    
+    --primary: #f1e735;
+    --pattern: rgba(22, 22, 7, 1);
+
+    --bg: black;
+    --accent: beige;
+    --error: red;
+
+    --sb-track-color: #000000;
+    --sb-thumb-color: rgba(255, 255, 255, 100%);
+    --sb-size: 5px;
+}
+
+span {
+	color: var(--primary);
+	text-shadow: rgba(241, 231, 53, 0.45) 0px 0px 35px;
+ 	text-align: center;
+	font-size: 2rem;
+	font-family: "Switzer";
+	text-decoration: underline;
+}
+
+p{
+    color: rgba(255, 255, 255, 0.7);
+    text-shadow: rgba(241, 231, 53, 0.45) 0px 0px 35px;
+    text-decoration: underline;
+    text-align: center;
+    font-size: 1rem;
+}
+
+svg{
+    width: 15%;
+    fill: var(--primary);
+    margin: 1rem;
+    margin-right: 1.5rem;
+    overflow: visible;
+}
+
+svg > *{
+    filter: drop-shadow(0px 0px 45px rgba(241, 231, 53, 0.3));
+}
+
+
+
+*::-webkit-scrollbar {
+    width: var(--sb-size);
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--sb-track-color);
+    border-radius: 0;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border-radius: 1px;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    * {
+        scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
+    }
+}
+
+@media (max-width: 600px) {
+     p{
+          font-size: 0.9rem;
+     }
+}
+
+.container {
+     display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+
+	width: 90%;
+	height: 90%;
+	max-width: 20rem;
+	max-height: 45rem;
+
+	padding: 1rem;
+	margin: 1rem;
+	gap: 2rem;
+	background-color: rgba(0, 0, 0, 0.13);
+	border: 0.12rem dashed rgba(255, 255, 255, 0.12);
+	background-size: contain;
+
+	border-radius: 0.75rem;
+	backdrop-filter: blur(2px);
+	-webkit-backdrop-filter: blur(2px);
+
+	box-shadow: inset 0px 0px 40px 0px rgba(0, 0, 0, 0), 0px 0px 40px 0px rgba(0, 0, 0, 1);
+
+	position: relative;
+	transition:all 0.2s ease-in;
+}
+
+.btn-striped-shadow {
+    --btn-color: var(--primary);
+
+    display: inline-block;
+    position: relative;
+    overflow: visible;
+
+    transition:
+        opacity 0.3s,
+        z-index 0.3s step-end,
+        transform 0.3s;
+
+    background-color: var(--btn-color);
+    color: var(--bg);
+
+    font-size: 1rem;
+
+    box-shadow: 0px 0px 40px 0px rgba(241, 231, 53, 0.12);
+    border-radius: 0.4rem;
+
+    width: 10rem;
+    height: 48px;
+    margin: 0.5rem;
+    z-index: 1;
+    cursor: pointer;
+
+}
+
+.btn-striped-shadow:after,
+.btn-striped-shadow:before {
+    content: "";
+    display: block;
+    position: absolute;
+    z-index: 1;
+    transition:
+        transform 0.3s,
+        max-height 0.3s,
+        width 0.3s;
+    background-image: linear-gradient(
+        135deg,
+        transparent 0,
+        transparent 5px,
+        var(--btn-color) 5px,
+        var(--btn-color) 10px,
+        transparent 10px
+    );
+    border-radius: 0.75rem;
+}
+
+.btn-striped-shadow:after {
+    width: calc(100% - 4px);
+    height: 8px;
+    left: -10px;
+    bottom: -9px;
+    background-size: 15px 8px;
+    background-repeat: repeat-x;
+}
+
+.btn-striped-shadow:before {
+    width: 8px;
+    max-height: calc(100% - 5px);
+    height: 100%;
+    left: -12px;
+    bottom: -5px;
+    background-size: 8px 15px;
+    background-repeat: repeat-y;
+    background-position: 0 100%;
+}
+
+.btn-striped-shadow:hover {
+    transform: translate(-12px, 12px);
+    z-index: 3;
+}
+
+.btn-striped-shadow:hover:before {
+    max-height: calc(100% - 10px);
+}
+
+.btn-striped-shadow:hover:after,
+.btn-striped-shadow:hover:before {
+    transform: translate(12px, -12px) scale(0.975);
+}
+
+.loader {
+    width: 60px;
+    aspect-ratio: 2;
+    --gradient: no-repeat radial-gradient(circle closest-side, white 90% ,black);
+    background:
+            var(--gradient) 0   50%,
+            var(--gradient) 50%  50%,
+            var(--gradient) 100% 50%;
+    background-size: calc(100%/3) 50%;
+    animation: load 1s infinite linear;
+}
+
+@keyframes load {
+    20%{background-position:0   0, 50%  50%,100%  50%}
+    40%{background-position:0 100%, 50%   0,100%  50%}
+    60%{background-position:0  50%, 50% 100%,100%   0}
+    80%{background-position:0 50%, 50%  50%,100% 100%}
+}
+
+@media (max-width: 600px) {
+    .btn-striped-shadow {
+        width: 9rem;
+    }
+}

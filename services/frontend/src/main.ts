@@ -1,9 +1,9 @@
 import { mount } from 'svelte'
-import './app.css'
 import App from './App.svelte'
+import './app.css'
 
 const app = mount(App, {
-  target: document.querySelector('body')!,
+     target: document.querySelector('body')!,
 })
 
 export default app
