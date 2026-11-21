@@ -1,4 +1,4 @@
 - minor tweaks
-- added db schema
-- fixed bugs
-- added complete drizzle implementation
+- created a small tanstack query like helper
+- fixed some bugs
+- small frontend changes

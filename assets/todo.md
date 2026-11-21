@@ -1,6 +1,6 @@
 # Code Report
 
-_Generated 2026-10-18T12:14:59.152Z · 18 files scanned · 34 findings_
+_Generated 2026-11-21T13:46:32.430Z · 21 files scanned · 34 findings_
 
 ## Summary
 
@@ -39,7 +39,7 @@ _Generated 2026-10-18T12:14:59.152Z · 18 files scanned · 34 findings_
 | File | Line | Description |
 |:---|:---:|:---|
 | [links/db/index.ts](links/db/index.ts#L213) | 213 | Implement runtime type checker (if necessary) |
-| [links/db/schema.ts](links/db/schema.ts#L16) | 16 | Hashing and encryption for the fields key and value |
+| [links/db/schema.ts](links/db/schema.ts#L17) | 17 | Hashing and encryption for the fields key and value |
 | [services/backend/ai/genai.ts](services/backend/ai/genai.ts#L33) | 33 | Explore using openrouter fusion to improve data responses |
 | [services/backend/ai/genai.ts](services/backend/ai/genai.ts#L80) | 80 | Check the package jsonrepair |
 | [services/backend/ai/match.ts](services/backend/ai/match.ts#L121) | 121 | Implement performance testing for this |
@@ -61,18 +61,18 @@ _Heuristic match — please review before trusting; not counted toward exit code
 |:---|:---:|:---|
 | [services/backend/ai/match.ts](services/backend/ai/match.ts#L358) | 358 | function longFuzzySort(input: string, queries: { content: string; score: number }[]) : {content: string; score: number}[ |
 | [services/backend/auth.ts](services/backend/auth.ts#L30) | 30 | g, '_').replace(/=+$/, ''); |
-| [services/backend/router.ts](services/backend/router.ts#L124) | 124 | revokeTokens(ctx.id); |
-| [services/backend/router.ts](services/backend/router.ts#L170) | 170 | export const imageRouter = router({ |
-| [services/backend/router.ts](services/backend/router.ts#L172) | 172 | upload: protectedProcedure |
-| [services/backend/router.ts](services/backend/router.ts#L175) | 175 | (input) => { |
-| [services/backend/router.ts](services/backend/router.ts#L176) | 176 | if (!(input instanceof FormData)) return input; |
-| [services/backend/router.ts](services/backend/router.ts#L178) | 178 | return { |
-| [services/backend/router.ts](services/backend/router.ts#L179) | 179 | id: input.get("id"), |
-| [services/backend/router.ts](services/backend/router.ts#L180) | 180 | file: input.get("file"), |
-| [services/backend/router.ts](services/backend/router.ts#L183) | 183 | zod.object({ |
-| [services/backend/router.ts](services/backend/router.ts#L184) | 184 | id: zod.coerce.number().int().positive(), |
-| [services/backend/router.ts](services/backend/router.ts#L185) | 185 | file: zod.instanceof(File), |
-| [services/backend/router.ts](services/backend/router.ts#L190) | 190 | .mutation(({ input, ctx }) => { |
-| [services/backend/router.ts](services/backend/router.ts#L191) | 191 | if(!input.id \|\| !input.file) throw toTRPCError({ code: "BAD_REQUEST", message: "entryId and file are required" }) |
-| [services/backend/router.ts](services/backend/router.ts#L192) | 192 | return storeImage(ctx.id, input.id, input.file); |
+| [services/backend/router.ts](services/backend/router.ts#L122) | 122 | revokeTokens(ctx.id); |
+| [services/backend/router.ts](services/backend/router.ts#L168) | 168 | export const imageRouter = router({ |
+| [services/backend/router.ts](services/backend/router.ts#L170) | 170 | upload: protectedProcedure |
+| [services/backend/router.ts](services/backend/router.ts#L173) | 173 | (input) => { |
+| [services/backend/router.ts](services/backend/router.ts#L174) | 174 | if (!(input instanceof FormData)) return input; |
+| [services/backend/router.ts](services/backend/router.ts#L176) | 176 | return { |
+| [services/backend/router.ts](services/backend/router.ts#L177) | 177 | id: input.get("id"), |
+| [services/backend/router.ts](services/backend/router.ts#L178) | 178 | file: input.get("file"), |
+| [services/backend/router.ts](services/backend/router.ts#L181) | 181 | zod.object({ |
+| [services/backend/router.ts](services/backend/router.ts#L182) | 182 | id: zod.coerce.number().int().positive(), |
+| [services/backend/router.ts](services/backend/router.ts#L183) | 183 | file: zod.instanceof(File), |
+| [services/backend/router.ts](services/backend/router.ts#L188) | 188 | .mutation(({ input, ctx }) => { |
+| [services/backend/router.ts](services/backend/router.ts#L189) | 189 | if(!input.id \|\| !input.file) throw toTRPCError({ code: "BAD_REQUEST", message: "entryId and file are required" }) |
+| [services/backend/router.ts](services/backend/router.ts#L190) | 190 | return storeImage(ctx.id, input.id, input.file); |
 

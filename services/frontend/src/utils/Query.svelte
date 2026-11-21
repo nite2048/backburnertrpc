@@ -1,19 +1,21 @@
-<script lang="ts">
-import { createQuery } from "./query.svelte.ts";
-import Error from "../lib/Error.svelte";
+<script lang="ts" generics="T">
+     import { type Snippet } from "svelte";
+     import ErrorCard from "../lib/Error.svelte";
+     import { createQuery } from "./query.svelte.ts";
 
-let { query } : {query : Promise<unknown>}= $props();
-let result = $state(createQuery({}, query));
-
+     let { query, children }: { query: () => Promise<T>; children?: Snippet<[T]> } = $props();
+     const q = createQuery(() => query());
 </script>
 
 <main>
-     {#if result.error}
-          <Error>Internal server error, can't reach server at the moment</Error>
-     {:else if result.isLoading}
+     {#if q.isLoading}
           <div class="loader"></div>
-     {:else if result.data}
-          <span>{result.data}</span>
+     {:else if q.result instanceof Error}
+          <ErrorCard message={q.result.message} code={q.result.name}></ErrorCard>
+     {:else if children}
+          {@render children(q.result)}
+     {:else}
+          <span>{JSON.stringify(q.result)}</span>
      {/if}
 </main>
 
