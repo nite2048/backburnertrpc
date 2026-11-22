@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 * {
     margin: 0;
     padding: 0;
@@ -10,7 +12,7 @@
 :root {
     font-size: 16px;
     background-color: var(--bg);
-    
+
     --primary: #f1e735;
     --pattern: rgba(22, 22, 7, 1);
 
@@ -80,7 +82,7 @@ svg > *{
      }
 }
 
-.container {
+.hero-container {
      display: flex;
 	flex-direction: column;
 	align-items: center;

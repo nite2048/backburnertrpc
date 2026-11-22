@@ -1,18 +1,20 @@
-<script lang="ts">
-     import { createTRPCClient, httpBatchLink } from '@trpc/client';
-     import type { AppRouter } from "../../backend/router";
+<script>
+     import page from 'page'
+     import Landing from './routes/Landing.svelte'
+     import Register from './routes/Register.svelte';
 
-     import page from 'page';
-     
-     import Query from './utils/Query.svelte'
-     
-     const trpc = createTRPCClient<AppRouter>({
-          links: [
-               httpBatchLink({
-                    url: 'http://localhost:3000',
-               }),
-          ],
+     let current 
+
+     page('/', () => {
+          current = Landing;
      });
+
+     page('/register', () => {
+          current = Register;
+     });
+
+     page.start();
+
 </script>
 
 <svelte:head>
@@ -21,13 +23,10 @@
      <link href="https://fonts.googleapis.com/css2?family=Grenze:ital,wght@0,100..900;1,100..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
 </svelte:head>
 
-<!--TODO: Test reactivity when this component updates -->
-
 <main>
-     <Query query={() => trpc.status.query()}>
-          {#snippet children(data)}<span>{data.status}</span>{/snippet}
-     </Query>
+     <svelte:component this={current}></svelte:component>
 </main>
+
 <style>
        main {
           width: 100svw;
